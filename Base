@@ -333,17 +333,27 @@ end
 local RoundStart = ReplicatedStorage.Remotes.Gameplay.RoundStart
 local RoundEnd = ReplicatedStorage.Remotes.Gameplay.RoundEndFade
 
+-- Функция для проверки состояния раунда
+local function checkRoundState()
+    -- Если UI запускается во время раунда, устанавливаем farming в true
+    farming = true
+    start_position = getHRP().CFrame
+end
+
 RoundStart.OnClientEvent:Connect(function()
-	farming = true
-	start_position = getHRP().CFrame
+    farming = true
+    start_position = getHRP().CFrame
 end)
 
 RoundEnd.OnClientEvent:Connect(function()
-	farming = false
-	if start_position then
-		getHRP().CFrame = start_position
-	end
+    farming = false
+    if start_position then
+        getHRP().CFrame = start_position
+    end
 end)
+
+-- Проверяем состояние раунда при запуске UI
+checkRoundState()
 
 -- // Auto Reset Logic
 local CoinCollected = ReplicatedStorage.Remotes.Gameplay.CoinCollected
@@ -394,8 +404,9 @@ end)
 -- ⚙️ MISC ФУНКЦИИ
 -------------------------------------------------------------------
 local antiAfkEnabled = false
+local antiAfkConnection = nil
 
--- // Anti-AFK Toggle (One-Time Activation)
+-- // Anti-AFK Toggle
 local AntiAFKToggle = Instance.new("TextButton")
 AntiAFKToggle.Parent = MiscContent
 AntiAFKToggle.Size = UDim2.new(0, 230, 0, 35)
@@ -430,29 +441,77 @@ AntiAFKToggleCircle.BackgroundColor3 = Color3.fromRGB(100, 40, 140)
 AntiAFKToggleCircle.BorderSizePixel = 0
 Instance.new("UICorner", AntiAFKToggleCircle).CornerRadius = UDim.new(1, 0)
 
+-- // Anti-AFK функция с прыжками каждые 5 секунд
+local function toggleAntiAFK()
+    if antiAfkEnabled then
+        -- Включаем анти-АФК
+        local VirtualInputManager = game:GetService("VirtualInputManager")
+        
+        -- Отключаем стандартный idle-детектор
+        local GC = getconnections or get_signal_cons
+        if GC then
+            for i,v in pairs(GC(Player.Idled)) do
+                if v["Disable"] then
+                    v["Disable"](v)
+                elseif v["Disconnect"] then
+                    v["Disconnect"](v)
+                end
+            end
+        end
+        
+        -- Создаем соединение для прыжков каждые 5 секунд
+        antiAfkConnection = RunService.Heartbeat:Connect(function()
+            if antiAfkEnabled then
+                -- Имитируем нажатие пробела для прыжка
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                
+                -- Ждем 5 секунд до следующего прыжка
+                task.wait(5)
+            else
+                -- Если анти-АФК отключен, разрываем соединение
+                if antiAfkConnection then
+                    antiAfkConnection:Disconnect()
+                    antiAfkConnection = nil
+                end
+            end
+        end)
+        
+        -- Дополнительная защита через Idled
+        Player.Idled:Connect(function()
+            if antiAfkEnabled then
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end
+        end)
+        
+        AntiAFKLabel.Text = "⏰ Anti-AFK ✓"
+        AntiAFKLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
+    else
+        -- Выключаем анти-АФК
+        if antiAfkConnection then
+            antiAfkConnection:Disconnect()
+            antiAfkConnection = nil
+        end
+        
+        AntiAFKLabel.Text = "⏰ Anti-AFK"
+        AntiAFKLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+end
+
 AntiAFKToggle.MouseButton1Click:Connect(function()
-	if not antiAfkEnabled then
-		antiAfkEnabled = true
+	antiAfkEnabled = not antiAfkEnabled
+	
+	if antiAfkEnabled then
 		AntiAFKToggleCircle.BackgroundColor3 = Color3.fromRGB(200, 120, 255)
-		
-		-- Загружаем Anti-AFK скрипт
-		local success, result = pcall(function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/BaconScrr/Universal/refs/heads/main/anti_afk.txt"))()
-		end)
-		
-		if success then
-			AntiAFKLabel.Text = "⏰ Anti-AFK ✓"
-			AntiAFKLabel.TextColor3 = Color3.fromRGB(120, 255, 120)
-		else
-			AntiAFKLabel.Text = "⏰ Anti-AFK ✗"
-			AntiAFKLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-			warn("Anti-AFK load failed: " .. tostring(result))
-		end
-		
-		-- Делаем кнопку неактивной после активации
-		AntiAFKToggle.AutoButtonColor = false
-		AntiAFKToggle.Active = false
+	else
+		AntiAFKToggleCircle.BackgroundColor3 = Color3.fromRGB(100, 40, 140)
 	end
+	
+	-- Мгновенное включение/выключение
+	toggleAntiAFK()
 end)
 
 -------------------------------------------------------------------

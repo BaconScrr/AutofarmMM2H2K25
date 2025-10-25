@@ -632,66 +632,137 @@ SubName.TextColor3 = Color3.fromRGB(200, 120, 255)
 SubName.TextSize = 11
 SubName.TextXAlignment = Enum.TextXAlignment.Left
 
--- // Перетаскивание
-
-local dragging = false
-local dragStart, startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale,
-        startPos.X.Offset + delta.X,
-        startPos.Y.Scale,
-        startPos.Y.Offset + delta.Y
-    )
-end
-
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
-end)
-
-MainFrame.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        update(input)
-    end
-end)
-
--- // Кнопка открытия / закрытия окна
-
+-- // Кнопка открытия / закрытия окна - КРАСИВЫЙ КРУГ БЕЗ ЗНАКОВ
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Parent = ScreenGui
 ToggleButton.Size = UDim2.new(0, 60, 0, 60)
 ToggleButton.Position = UDim2.new(0.06, 0, 0.12, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(30, 0, 45)
-ToggleButton.BackgroundTransparency = 0.25
+ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+ToggleButton.BackgroundTransparency = 0.2
 ToggleButton.Text = ""
 ToggleButton.AutoButtonColor = false
+ToggleButton.ZIndex = 10
 
+-- Идеально круглый угол
 local ButtonCorner = Instance.new("UICorner", ToggleButton)
 ButtonCorner.CornerRadius = UDim.new(1, 0)
 
+-- Красивая обводка с градиентным эффектом
 local ButtonStroke = Instance.new("UIStroke", ToggleButton)
-ButtonStroke.Color = Color3.fromRGB(200, 100, 255)
-ButtonStroke.Thickness = 1.3
-ButtonStroke.Transparency = 0.35
+ButtonStroke.Color = Color3.fromRGB(180, 80, 255)
+ButtonStroke.Thickness = 2.5
+ButtonStroke.Transparency = 0.2
 
+-- Внутренний круг (простой, без иконок)
+local IconCircle = Instance.new("Frame", ToggleButton)
+IconCircle.Size = UDim2.new(0, 36, 0, 36)
+IconCircle.Position = UDim2.new(0.2, 0, 0.2, 0)
+IconCircle.BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+IconCircle.BorderSizePixel = 0
+IconCircle.ZIndex = 11
+
+local IconCorner = Instance.new("UICorner", IconCircle)
+IconCorner.CornerRadius = UDim.new(1, 0)
+
+-- Обводка внутреннего круга
+local IconStroke = Instance.new("UIStroke", IconCircle)
+IconStroke.Color = Color3.fromRGB(220, 140, 255)
+IconStroke.Thickness = 1.8
+IconStroke.Transparency = 0.3
+
+-- Анимация при наведении
+ToggleButton.MouseEnter:Connect(function()
+    local tween = TweenService:Create(ToggleButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundColor3 = Color3.fromRGB(50, 10, 80),
+        Size = UDim2.new(0, 65, 0, 65)
+    })
+    tween:Play()
+    
+    local iconTween = TweenService:Create(IconCircle, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundColor3 = Color3.fromRGB(80, 30, 120),
+        Size = UDim2.new(0, 40, 0, 40)
+    })
+    iconTween:Play()
+end)
+
+ToggleButton.MouseLeave:Connect(function()
+    local tween = TweenService:Create(ToggleButton, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundColor3 = Color3.fromRGB(40, 0, 60),
+        Size = UDim2.new(0, 60, 0, 60)
+    })
+    tween:Play()
+    
+    local iconTween = TweenService:Create(IconCircle, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        BackgroundColor3 = Color3.fromRGB(60, 20, 100),
+        Size = UDim2.new(0, 36, 0, 36)
+    })
+    iconTween:Play()
+end)
+
+-- Анимация пульсации
+task.spawn(function()
+    while true do
+        local pulseTween = TweenService:Create(ButtonStroke, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+            Transparency = 0.6
+        })
+        pulseTween:Play()
+        pulseTween.Completed:Wait()
+        
+        local pulseTween2 = TweenService:Create(ButtonStroke, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut), {
+            Transparency = 0.2
+        })
+        pulseTween2:Play()
+        pulseTween2.Completed:Wait()
+    end
+end)
+
+-- АНИМАЦИЯ НАЖАТИЯ
+ToggleButton.MouseButton1Down:Connect(function()
+    -- Анимация нажатия (уменьшение)
+    local clickTween = TweenService:Create(ToggleButton, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 55, 0, 55),
+        BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+    })
+    clickTween:Play()
+    
+    local iconClickTween = TweenService:Create(IconCircle, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 32, 0, 32),
+        BackgroundColor3 = Color3.fromRGB(100, 40, 140)
+    })
+    iconClickTween:Play()
+    
+    -- Анимация обводки при нажатии
+    local strokeTween = TweenService:Create(ButtonStroke, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Thickness = 4,
+        Color = Color3.fromRGB(220, 120, 255)
+    })
+    strokeTween:Play()
+end)
+
+ToggleButton.MouseButton1Up:Connect(function()
+    -- Анимация отпускания (возврат к нормальному размеру)
+    local releaseTween = TweenService:Create(ToggleButton, TweenInfo.new(0.15, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 60, 0, 60),
+        BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+    })
+    releaseTween:Play()
+    
+    local iconReleaseTween = TweenService:Create(IconCircle, TweenInfo.new(0.15, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 36, 0, 36),
+        BackgroundColor3 = Color3.fromRGB(60, 20, 100)
+    })
+    iconReleaseTween:Play()
+    
+    -- Возврат обводки к нормальному состоянию
+    local strokeReleaseTween = TweenService:Create(ButtonStroke, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Thickness = 2.5,
+        Color = Color3.fromRGB(180, 80, 255)
+    })
+    strokeReleaseTween:Play()
+end)
+
+-- Перетаскивание кнопки
 local draggingButton = false
 local dragStartButton, startPosButton
 
@@ -730,10 +801,51 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
+-- Функция открытия/закрытия UI
 local isVisible = true
 ToggleButton.MouseButton1Click:Connect(function()
     isVisible = not isVisible
     MainFrame.Visible = isVisible
+end)
+
+-- // Перетаскивание главного окна
+
+local dragging = false
+local dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(
+        startPos.X.Scale,
+        startPos.X.Offset + delta.X,
+        startPos.Y.Scale,
+        startPos.Y.Offset + delta.Y
+    )
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        update(input)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        update(input)
+    end
 end)
 
 print("✅ MM2 Halloween Script загружен успешно!")
